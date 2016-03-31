@@ -133,6 +133,17 @@ function wrap (argv, env, workingDir) {
       options.envPairs.push((isWindows ? 'Path=' : 'PATH=') + workingDir)
     }
 
+    if (file === 'npm') {
+      var npmPath = lookupInPath('npm', pathEnv)
+      
+      if (npmPath) {
+        options.args[0] = npmPath
+
+        options.file = workingDir + '/node'
+        options.args.unshift(workingDir + '/node')
+      }
+    }
+
     if (isWindows) fixWindowsBins(workingDir, options)
 
     return spawn.call(this, options)
@@ -151,6 +162,28 @@ function fixWindowsBins (workingDir, options) {
     var shim = workingDir + '/node'
     options.args.splice(0, 1, options.file, workingDir + '/node')
   }
+}
+
+// imitate which(1)
+function lookupInPath(executableName, pathEnv) {
+  var pathDirs = (pathEnv || '').split(colon)
+  var executablePath
+
+  for (var i = 0; i < pathDirs.length; i++) {
+    executablePath = path.resolve(pathDirs[i], executableName)
+    try {
+      fs.accessSync(executablePath, fs.R_OK | fs.X_OK)
+    } catch (err) {
+      // not found/not executable
+      executablePath = undefined
+      continue
+    }
+
+    // found it
+    break
+  }
+  
+  return executablePath
 }
 
 function setup (argv, env) {
