@@ -12,6 +12,7 @@ var path = require('path')
 var signalExit = require('signal-exit')
 var homedir = require('os-homedir')() + '/.node-spawn-wrap-'
 var winRebase = require('./lib/win-rebase')
+var which = require('which')
 
 var cmdname = path.basename(process.execPath, '.exe')
 
@@ -134,11 +135,15 @@ function wrap (argv, env, workingDir) {
     }
 
     if (file === 'npm') {
-      var npmPath = lookupInPath('npm', pathEnv)
-      
+      var npmPath = null
+      try {
+        var npmPath = which.sync('npm')
+      } catch (_err) {
+        // could not find bin.
+      }
+
       if (npmPath) {
         options.args[0] = npmPath
-
         options.file = workingDir + '/node'
         options.args.unshift(workingDir + '/node')
       }
@@ -162,28 +167,6 @@ function fixWindowsBins (workingDir, options) {
     var shim = workingDir + '/node'
     options.args.splice(0, 1, options.file, workingDir + '/node')
   }
-}
-
-// imitate which(1)
-function lookupInPath(executableName, pathEnv) {
-  var pathDirs = (pathEnv || '').split(colon)
-  var executablePath
-
-  for (var i = 0; i < pathDirs.length; i++) {
-    executablePath = path.resolve(pathDirs[i], executableName)
-    try {
-      fs.accessSync(executablePath, fs.R_OK | fs.X_OK)
-    } catch (err) {
-      // not found/not executable
-      executablePath = undefined
-      continue
-    }
-
-    // found it
-    break
-  }
-  
-  return executablePath
 }
 
 function setup (argv, env) {
